@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Application } from '../types';
-import { CheckCircle, XCircle, Eye, LogOut, Users } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, LogOut, Users, Trash2 } from 'lucide-react';
 
 export function HeadmasterDashboard() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -10,6 +10,7 @@ export function HeadmasterDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'students'>('pending');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export function HeadmasterDashboard() {
       return;
     }
 
-    alert('Application approved! Student has been admitted successfully.');
+    alert('Application approved! Student admitted successfully.');
     loadApplications();
     loadStudents();
     setSelectedApp(null);
@@ -106,6 +107,73 @@ export function HeadmasterDashboard() {
     if (!error) {
       alert('Application rejected');
       loadApplications();
+    }
+  };
+
+  const deleteStudent = async (studentId: string) => {
+    // Double confirmation for safety
+    const confirmDelete = confirm(
+      '⚠️ WARNING: This will permanently delete the student record. Are you sure?'
+    );
+    
+    if (!confirmDelete) return;
+
+    const secondConfirm = confirm(
+      'This action cannot be undone. Type "DELETE" to confirm.'
+    );
+    
+    if (!secondConfirm) return;
+
+    setDeletingId(studentId);
+
+    try {
+      // First, get the student to find associated application_id
+      const { data: student, error: fetchError } = await supabase
+        .from('students')
+        .select('application_id')
+        .eq('id', studentId)
+        .single();
+
+      if (fetchError) {
+        alert('Error finding student record: ' + fetchError.message);
+        setDeletingId(null);
+        return;
+      }
+
+      // Delete the student record
+      const { error: deleteError } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', studentId);
+
+      if (deleteError) {
+        alert('Error deleting student: ' + deleteError.message);
+        setDeletingId(null);
+        return;
+      }
+
+      // Optionally: Update the application status back to 'clerk_reviewed' or 'deleted'
+      if (student?.application_id) {
+        await supabase
+          .from('applications')
+          .update({ 
+            status: 'clerk_reviewed',
+            hm_id: null,
+            approved_at: null
+          })
+          .eq('id', student.application_id);
+      }
+
+      alert('✅ Student deleted successfully!');
+      
+      // Refresh the students list
+      await loadStudents();
+      
+    } catch (error) {
+      console.error('Error in delete process:', error);
+      alert('An unexpected error occurred while deleting the student.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -156,15 +224,16 @@ export function HeadmasterDashboard() {
           </button>
         </div>
 
+        {/* PENDING APPROVALS TAB */}
         {activeTab === 'pending' && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold">Applications for Approval</h2>
+              <h2 className="text-xl font-semibold">Pending Applications</h2>
             </div>
 
             {applications.length === 0 ? (
               <div className="p-12 text-center text-gray-500">
-                No pending applications for approval
+                No pending applications to review
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -172,9 +241,8 @@ export function HeadmasterDashboard() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aadhaar</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reviewed At</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                   </thead>
@@ -182,35 +250,27 @@ export function HeadmasterDashboard() {
                     {applications.map((app) => (
                       <tr key={app.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">{app.student_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{app.aadhaar_no}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{app.father_name}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{app.contact_no}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {app.reviewed_at ? new Date(app.reviewed_at).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => setSelectedApp(app)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="View Details"
-                            >
-                              <Eye className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => approveApplication(app)}
-                              className="text-green-600 hover:text-green-900"
-                              title="Approve"
-                            >
-                              <CheckCircle className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => rejectApplication(app.id)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Reject"
-                            >
-                              <XCircle className="w-5 h-5" />
-                            </button>
-                          </div>
+                        <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                          <button
+                            onClick={() => setSelectedApp(app)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Eye className="w-5 h-5 inline" />
+                          </button>
+                          <button
+                            onClick={() => approveApplication(app)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            <CheckCircle className="w-5 h-5 inline" />
+                          </button>
+                          <button
+                            onClick={() => rejectApplication(app.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <XCircle className="w-5 h-5 inline" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -221,10 +281,14 @@ export function HeadmasterDashboard() {
           </div>
         )}
 
+        {/* STUDENTS TAB WITH DELETE BUTTON */}
         {activeTab === 'students' && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b">
               <h2 className="text-xl font-semibold">Admitted Students</h2>
+              <p className="text-sm text-red-600 mt-1">
+                ⚠️ Headmaster only: Delete action is permanent
+              </p>
             </div>
 
             {students.length === 0 ? (
@@ -241,6 +305,7 @@ export function HeadmasterDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admitted On</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -253,6 +318,18 @@ export function HeadmasterDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(student.admitted_at).toLocaleDateString()}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => deleteStudent(student.id)}
+                            disabled={deletingId === student.id}
+                            className={`text-red-600 hover:text-red-900 transition-colors ${
+                              deletingId === student.id ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            title="Delete Student (Headmaster Only)"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -261,93 +338,56 @@ export function HeadmasterDashboard() {
             )}
           </div>
         )}
-      </div>
 
-      {selectedApp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white">
-              <h3 className="text-xl font-bold">Application Details</h3>
-              <button
-                onClick={() => setSelectedApp(null)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6">
-              {selectedApp.photo_url && (
-                <div className="text-center mb-6">
-                  <img
-                    src={selectedApp.photo_url}
-                    alt="Student"
-                    className="w-32 h-32 object-cover rounded border-2 border-gray-300 mx-auto"
-                  />
+        {/* Application Details Modal */}
+        {selectedApp && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold">Application Details</h3>
+                  <button
+                    onClick={() => setSelectedApp(null)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
                 </div>
-              )}
-
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-bold text-lg mb-2">School Details</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><span className="font-medium">School Name:</span> {selectedApp.school_name}</div>
-                    <div><span className="font-medium">UDISE:</span> {selectedApp.udise}</div>
-                    <div><span className="font-medium">Admission No:</span> {selectedApp.admission_no}</div>
-                    <div><span className="font-medium">Date:</span> {selectedApp.admission_date || 'N/A'}</div>
-                  </div>
+                
+                <div className="space-y-3">
+                  <p><strong>Student Name:</strong> {selectedApp.student_name}</p>
+                  <p><strong>Father's Name:</strong> {selectedApp.father_name}</p>
+                  <p><strong>Mother's Name:</strong> {selectedApp.mother_name}</p>
+                  <p><strong>Date of Birth:</strong> {new Date(selectedApp.date_of_birth).toLocaleDateString()}</p>
+                  <p><strong>Gender:</strong> {selectedApp.gender}</p>
+                  <p><strong>Category:</strong> {selectedApp.category}</p>
+                  <p><strong>Aadhaar Number:</strong> {selectedApp.aadhaar_no}</p>
+                  <p><strong>Contact:</strong> {selectedApp.contact_no}</p>
+                  <p><strong>Email:</strong> {selectedApp.email}</p>
+                  <p><strong>Address:</strong> {selectedApp.address_at}, {selectedApp.address_po}, {selectedApp.address_ps}</p>
+                  <p><strong>District:</strong> {selectedApp.district}</p>
+                  <p><strong>PIN Code:</strong> {selectedApp.pin_code}</p>
                 </div>
 
-                <div>
-                  <h4 className="font-bold text-lg mb-2">Student Details</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><span className="font-medium">Name:</span> {selectedApp.student_name}</div>
-                    <div><span className="font-medium">Aadhaar:</span> {selectedApp.aadhaar_no}</div>
-                    <div><span className="font-medium">Gender:</span> {selectedApp.gender}</div>
-                    <div><span className="font-medium">DOB:</span> {selectedApp.date_of_birth}</div>
-                    <div><span className="font-medium">Age:</span> {selectedApp.age}</div>
-                    <div><span className="font-medium">Category:</span> {selectedApp.category}</div>
-                  </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => rejectApplication(selectedApp.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => approveApplication(selectedApp)}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    Approve
+                  </button>
                 </div>
-
-                <div>
-                  <h4 className="font-bold text-lg mb-2">Parent Details</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><span className="font-medium">Father:</span> {selectedApp.father_name}</div>
-                    <div><span className="font-medium">Mother:</span> {selectedApp.mother_name}</div>
-                    <div><span className="font-medium">Father Occupation:</span> {selectedApp.father_occupation}</div>
-                    <div><span className="font-medium">Mother Occupation:</span> {selectedApp.mother_occupation}</div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-lg mb-2">Contact Details</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><span className="font-medium">Phone:</span> {selectedApp.contact_no}</div>
-                    <div><span className="font-medium">Email:</span> {selectedApp.email}</div>
-                    <div><span className="font-medium">District:</span> {selectedApp.district}</div>
-                    <div><span className="font-medium">PIN:</span> {selectedApp.pin_code}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 flex justify-end space-x-4">
-                <button
-                  onClick={() => rejectApplication(selectedApp.id)}
-                  className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => approveApplication(selectedApp)}
-                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Approve & Admit Student
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
