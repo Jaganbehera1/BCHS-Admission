@@ -587,10 +587,10 @@ export function AdmissionForm() {
                 />
               </div>
                             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Which Class</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Class Admitted For</label>
                 <input
                   type="text"
-                  name="Which Class"
+                  name="Class Admitted For"
                   value={formData.which_class}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
