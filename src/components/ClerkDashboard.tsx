@@ -50,7 +50,8 @@ export function ClerkDashboard() {
       printWindow.focus();
       setTimeout(() => {
         printWindow.print();
-      }, 250);
+        printWindow.close();
+      }, 500);
     }
   };
 
@@ -59,104 +60,350 @@ export function ClerkDashboard() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Admission Form - ${app.student_name}</title>
+        <title>Admission Form - ${app.student_name} - PM SHRI B.C High School</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .header { text-align: center; color: red; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
-          .section { background: #e3f2fd; padding: 15px; margin: 10px 0; border-radius: 5px; }
-          .section-title { font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #1565c0; }
-          table { width: 100%; border-collapse: collapse; }
-          td { padding: 8px; border: 1px solid #ccc; }
-          td:first-child { font-weight: bold; background: #f5f5f5; width: 30%; }
-          .photo { text-align: center; margin: 20px 0; }
-          .photo img { max-width: 150px; border: 2px solid #333; }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: white;
+            padding: 0.3in;
+            font-size: 11pt;
+            line-height: 1.3;
+            position: relative;
+          }
+          
+          /* Force exact page breaks */
+          .page1 {
+            page-break-after: always;
+            position: relative;
+          }
+          
+          .page2 {
+            page-break-before: avoid;
+          }
+          
+          /* Header Section */
+          .school-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #1e40af;
+          }
+          
+          .school-name {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            margin-bottom: 3px;
+          }
+          
+          .school-address {
+            font-size: 9pt;
+            color: #475569;
+            margin: 3px 0;
+          }
+          
+          .form-title {
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            color: #dc2626;
+            margin: 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          
+          /* Photo Section - Absolute Position Top Right Corner with 70% height */
+          .photo-absolute {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            border: 2px solid #1e3a8a;
+            padding: 4px;
+            background: white;
+            text-align: center;
+            border-radius: 4px;
+            z-index: 100;
+          }
+          
+          .photo-absolute img {
+            width: 100%;
+            height: auto;
+            max-height: 70px;
+            object-fit: contain;
+            display: block;
+          }
+          
+          .photo-label {
+            font-size: 7pt;
+            color: #1e3a8a;
+            margin-top: 3px;
+            font-weight: bold;
+          }
+          
+          /* Main content wrapper to accommodate absolute positioned photo */
+          .main-content {
+            margin-top: 0;
+          }
+          
+          /* Application Info Bar - Add top margin to avoid overlap with photo */
+          .info-bar {
+            margin-top: 0;
+          }
+          
+          /* Section Titles */
+          .section-title {
+            background: #1e3a8a;
+            color: white;
+            padding: 5px 10px;
+            font-size: 11pt;
+            font-weight: bold;
+            margin: 12px 0 8px 0;
+            border-radius: 3px;
+          }
+          
+          /* Tables */
+          .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+          }
+          
+          .data-table td {
+            padding: 6px 8px;
+            border: 1px solid #d1d5db;
+            vertical-align: top;
+          }
+          
+          .data-table td:first-child {
+            background: #f3f4f6;
+            font-weight: 600;
+            width: 35%;
+          }
+          
+          /* Declaration */
+          .declaration {
+            background: #fef3c7;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 9pt;
+            line-height: 1.4;
+            border-left: 3px solid #f59e0b;
+          }
+          
+          /* Signature Section */
+          .signature-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0 10px 0;
+          }
+          
+          .signature-box {
+            text-align: center;
+            width: 45%;
+          }
+          
+          .signature-line {
+            margin-top: 30px;
+            padding-top: 5px;
+            border-top: 1px solid #000;
+          }
+          
+          /* Office Use */
+          .office-use {
+            background: #e0f2fe;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 3px;
+          }
+          
+          .office-title {
+            font-weight: bold;
+            color: #0369a1;
+            margin-bottom: 8px;
+            font-size: 10pt;
+          }
+          
+          /* Footer */
+          .footer {
+            text-align: center;
+            font-size: 8pt;
+            color: #6b7280;
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+          }
+          
+          /* Page break control */
           @media print {
-            body { padding: 10px; }
-            .no-print { display: none; }
+            body {
+              padding: 0.2in;
+            }
+            
+            .section-title {
+              background: #1e3a8a !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            .data-table td:first-child {
+              background: #f3f4f6 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            .declaration {
+              background: #fef3c7 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            .office-use {
+              background: #e0f2fe !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="header">ADMISSION FORM</div>
-
-        ${app.photo_url ? `<div class="photo"><img src="${app.photo_url}" alt="Student Photo" /></div>` : ''}
-
-        <div class="section">
-          <div class="section-title">School Details</div>
-          <table>
-            <tr><td>School Name</td><td>${app.school_name}</td></tr>
-            <tr><td>UDISE</td><td>${app.udise}</td></tr>
-            <tr><td>Admission No</td><td>${app.admission_no}</td></tr>
-            <tr><td>Date</td><td>${app.admission_date || ''}</td></tr>
-            <tr><td>PEN No.</td><td>${app.pen_no}</td></tr>
-            <tr><td>Extra Co-curricular Activity</td><td>${app.extra_curricular}</td></tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Student Details</div>
-          <table>
-            <tr><td>Student Name</td><td>${app.student_name}</td></tr>
-            <tr><td>Aadhaar No</td><td>${app.aadhaar_no}</td></tr>
+        <!-- PAGE 1 -->
+        <div class="page1">
+          <!-- Photo at Absolute Top Right Corner -->
+          ${app.photo_url ? `
+          <div class="photo-absolute">
+            <img src="${app.photo_url}" alt="Student Photo" />
+            <div class="photo-label">Student's Photograph</div>
+          </div>
+          ` : ''}
+          
+          <!-- Header -->
+          <div class="school-header">
+            <div class="school-name">PM SHRI B.C HIGH SCHOOL, RANPUR</div>
+          </div>
+          
+          <div class="form-title">ADMISSION APPLICATION FORM 2025-26</div>
+          
+          <!-- Application Info Bar -->
+          <table class="data-table info-bar" style="margin-bottom: 10px; background: #f8fafc;">
+            <tr>
+              <td style="width: 25%;"><strong>Application ID:</strong> ${app.id?.slice(0, 8).toUpperCase() || 'N/A'}</td>
+              <td style="width: 25%;"><strong>Date:</strong> ${new Date(app.created_at).toLocaleDateString('en-IN')}</td>
+              <td style="width: 25%;"><strong>Status:</strong> ${app.status.toUpperCase().replace('_', ' ')}</td>
+              <td style="width: 25%;"><strong>Class:</strong> Nursery/UKG</td>
+            </tr>
+           </table>
+          
+          <!-- School Information Section -->
+          <div class="section-title">📚 SCHOOL INFORMATION</div>
+          <table class="data-table">
+            <tr><td style="width: 35%;">School Name</td><td style="width: 65%;"><strong>${app.school_name}</strong></td></tr>
+            <tr><td>UDISE Code</td><td>${app.udise}</td></tr>
+            <tr><td>Admission Number</td><td><strong>${app.admission_no}</strong></td></tr>
+            <tr><td>Admission Date</td><td>${app.admission_date || new Date().toLocaleDateString('en-IN')}</td></tr>
+            <tr><td>PEN Number</td><td>${app.pen_no || 'To be assigned'}</td></tr>
+           </table>
+          
+          <div class="section-title">👤 STUDENT PERSONAL DETAILS</div>
+          <table class="data-table">
+            <tr><td>Student's Full Name</td><td><strong>${app.student_name}</strong></td></tr>
+            <tr><td>Aadhaar Number</td><td>${app.aadhaar_no}</td></tr>
             <tr><td>Gender</td><td>${app.gender}</td></tr>
-            <tr><td>Category</td><td>${app.category}</td></tr>
             <tr><td>Date of Birth</td><td>${app.date_of_birth}</td></tr>
-            <tr><td>Age</td><td>${app.age || ''}</td></tr>
-            <tr><td>Whether PWD</td><td>${app.is_pwd ? 'Yes' : 'No'}</td></tr>
-          </table>
+            <tr><td>Age (as on 01.04.2025)</td><td>${app.age || 'Calculated'}</td></tr>
+            <tr><td>Category</td><td>${app.category}</td></tr>
+            <tr><td>PWD Status</td><td>${app.is_pwd ? 'Yes' : 'No'}</td></tr>
+            <tr><td>Extra-curricular Activity</td><td>${app.extra_curricular || 'None'}</td></tr>
+           </table>
+          
+          <div class="section-title">👨‍👩‍👧 PARENT/GUARDIAN DETAILS</div>
+          <table class="data-table">
+            <tr><td>Father's Name</td><td><strong>${app.father_name}</strong></td></tr>
+            <tr><td>Father's Aadhaar</td><td>${app.father_aadhaar}</td></tr>
+            <tr><td>Father's Occupation</td><td>${app.father_occupation}</td></tr>
+            <tr><td>Mother's Name</td><td><strong>${app.mother_name}</strong></td></tr>
+            <tr><td>Mother's Aadhaar</td><td>${app.mother_aadhaar}</td></tr>
+            <tr><td>Mother's Occupation</td><td>${app.mother_occupation}</td></tr>
+           </table>
         </div>
-
-        <div class="section">
-          <div class="section-title">Parent Details</div>
-          <table>
-            <tr><td>Father Name</td><td>${app.father_name}</td></tr>
-            <tr><td>Father Aadhaar</td><td>${app.father_aadhaar}</td></tr>
-            <tr><td>Father Occupation</td><td>${app.father_occupation}</td></tr>
-            <tr><td>Mother Name</td><td>${app.mother_name}</td></tr>
-            <tr><td>Mother Aadhaar</td><td>${app.mother_aadhaar}</td></tr>
-            <tr><td>Mother Occupation</td><td>${app.mother_occupation}</td></tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Address Details</div>
-          <table>
-            <tr><td>At</td><td>${app.address_at}</td></tr>
-            <tr><td>PO</td><td>${app.address_po}</td></tr>
-            <tr><td>PS</td><td>${app.address_ps}</td></tr>
-            <tr><td>District</td><td>${app.district}</td></tr>
+        
+        <!-- PAGE 2 -->
+        <div class="page2">
+          <div class="section-title">📍 RESIDENTIAL ADDRESS</div>
+          <table class="data-table">
+            <tr><td>Village/Town (At)</td><td>${app.address_at}</td></tr>
+            <tr><td>Post Office (PO)</td><td>${app.address_po}</td></tr>
+            <tr><td>Police Station (PS)</td><td>${app.address_ps}</td></tr>
+            <tr><td>District</td><td><strong>${app.district}</strong></td></tr>
             <tr><td>PIN Code</td><td>${app.pin_code}</td></tr>
-            <tr><td>Contact No</td><td>${app.contact_no}</td></tr>
-            <tr><td>Alternate No</td><td>${app.alternate_no}</td></tr>
-            <tr><td>Email</td><td>${app.email}</td></tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Other Details</div>
-          <table>
-            <tr><td>BPL</td><td>${app.bpl}</td></tr>
-            <tr><td>Ration Card No</td><td>${app.ration_card_no}</td></tr>
-            <tr><td>Previous School Status</td><td>${app.previous_school}</td></tr>
-            <tr><td>Bank A/C No</td><td>${app.bank_account_no}</td></tr>
-            <tr><td>IFSC</td><td>${app.ifsc}</td></tr>
-            <tr><td>Account Holder Name</td><td>${app.account_holder_name}</td></tr>
-          </table>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Declaration</div>
-          <p style="padding: 10px;">I hereby certify that the information provided by me in this admission form is true & correct to the best of my knowledge. I further confirm that my child is not enrolled in or attending any other educational institution at the same time.</p>
-          <table>
-            <tr><td>Place</td><td>${app.declaration_place}</td></tr>
-            <tr><td>Signature (Parent)</td><td style="height: 50px;"></td></tr>
-          </table>
-        </div>
-
-        <div style="margin-top: 40px; border-top: 2px solid #333; padding-top: 20px;">
-          <p><strong>For Office Use Only</strong></p>
-          <p>Clerk Signature: _____________________</p>
-          <p>Headmaster Seal & Signature: _____________________</p>
+           </table>
+          
+          <div class="section-title">📞 CONTACT DETAILS</div>
+          <table class="data-table">
+            <tr><td>Primary Contact No.</td><td><strong>${app.contact_no}</strong></td></tr>
+            <tr><td>Alternate Contact No.</td><td>${app.alternate_no || 'N/A'}</td></tr>
+            <tr><td>Email Address</td><td>${app.email}</td></tr>
+           </table>
+          
+          <div class="section-title">📋 ADDITIONAL INFORMATION</div>
+          <table class="data-table">
+            <tr><td>BPL Status</td><td>${app.bpl}</td></tr>
+            <tr><td>Ration Card Number</td><td>${app.ration_card_no || 'N/A'}</td></tr>
+            <tr><td>Previous School</td><td>${app.previous_school || 'N/A'}</td></tr>
+            <tr><td>Bank Account Number</td><td>${app.bank_account_no || 'N/A'}</td></tr>
+            <tr><td>IFSC Code</td><td>${app.ifsc || 'N/A'}</td></tr>
+            <tr><td>Account Holder Name</td><td>${app.account_holder_name || 'N/A'}</td></tr>
+           </table>
+          
+          <!-- Declaration -->
+          <div class="declaration">
+            <strong>📜 DECLARATION:</strong><br/>
+            I hereby declare that all information provided above is true and correct to the best of my knowledge. I understand that furnishing false information may lead to cancellation of admission. I confirm that my child is not enrolled in any other school simultaneously.
+          </div>
+          
+          <!-- Signatures -->
+          <div class="signature-row">
+            <div class="signature-box">
+              <strong>Place:</strong> ${app.declaration_place || 'Ranpur'}<br/>
+              <strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}
+            </div>
+            <div class="signature-box">
+              <strong>Parent's Signature</strong>
+              <div class="signature-line"></div>
+            </div>
+          </div>
+          
+          <!-- Office Use Only -->
+          <div class="office-use">
+            <div class="office-title">🏫 FOR OFFICE USE ONLY</div>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 5px; width: 33%; border: 1px solid #ccc;">
+                  <strong>Student's Signature</strong><br/>
+                  <br/>
+                  ________________________________<br/>
+                </td>
+                <td style="padding: 5px; width: 33%; border: 1px solid #ccc;">
+                  <strong>Headmaster's Seal & Signature</strong><br/>
+                  <br/>
+                  _________________________________<br/>
+                </td>
+                <td style="padding: 5px; width: 34%; border: 1px solid #ccc;">
+                  <strong>Remarks</strong><br/>
+                  <br/>
+                  _________________________________<br/>
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+          <!-- Footer -->
         </div>
       </body>
       </html>
@@ -284,7 +531,6 @@ export function ClerkDashboard() {
                   />
                 </div>
               )}
-
               <div className="space-y-6">
                 <div>
                   <h4 className="font-bold text-lg mb-2">School Details</h4>
@@ -295,7 +541,6 @@ export function ClerkDashboard() {
                     <div><span className="font-medium">Date:</span> {selectedApp.admission_date || 'N/A'}</div>
                   </div>
                 </div>
-
                 <div>
                   <h4 className="font-bold text-lg mb-2">Student Details</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -307,7 +552,6 @@ export function ClerkDashboard() {
                     <div><span className="font-medium">Category:</span> {selectedApp.category}</div>
                   </div>
                 </div>
-
                 <div>
                   <h4 className="font-bold text-lg mb-2">Parent Details</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -317,7 +561,6 @@ export function ClerkDashboard() {
                     <div><span className="font-medium">Mother Occupation:</span> {selectedApp.mother_occupation}</div>
                   </div>
                 </div>
-
                 <div>
                   <h4 className="font-bold text-lg mb-2">Contact Details</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
