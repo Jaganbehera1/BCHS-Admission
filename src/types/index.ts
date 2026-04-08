@@ -43,6 +43,7 @@ export interface Application {
   account_holder_name: string;
   photo_url: string | null;
   declaration_place: string;
+  which_class: string;
   status: 'pending' | 'clerk_reviewed' | 'hm_approved' | 'rejected';
   clerk_id: string | null;
   hm_id: string | null;
