@@ -296,7 +296,7 @@ export function ClerkDashboard() {
               <td style="width: 25%;"><strong>Application ID:</strong> ${app.id?.slice(0, 8).toUpperCase() || 'N/A'}</td>
               <td style="width: 25%;"><strong>Date:</strong> ${new Date(app.created_at).toLocaleDateString('en-IN')}</td>
               <td style="width: 25%;"><strong>Status:</strong> ${app.status.toUpperCase().replace('_', ' ')}</td>
-              <td style="width: 25%;"><strong>Class:</strong> Nursery/UKG</td>
+              <td style="width: 25%;"><strong>Class:</strong> ${app.which_class || 'N/A'}</td>
             </tr>
            </table>
           
