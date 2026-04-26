@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Application } from '../types';
@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Eye, LogOut, Users, Trash2 } from 'lucide-react';
 export function HeadmasterDashboard() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [classFilter, setClassFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'students'>('pending');
@@ -33,10 +34,58 @@ export function HeadmasterDashboard() {
   const loadStudents = async () => {
     const { data } = await supabase
       .from('students')
-      .select('*')
+      .select('*, application:application_id(which_class, pen_no, udise)')
       .order('admitted_at', { ascending: false });
 
     setStudents(data || []);
+  };
+
+  const filteredStudents = useMemo(() => {
+    if (!classFilter) return students;
+    return students.filter((student) => {
+      const studentClass = student?.application?.which_class || 'Unknown';
+      return studentClass.toLowerCase() === classFilter.toLowerCase();
+    });
+  }, [students, classFilter]);
+
+  const availableClasses = useMemo(() => {
+    return Array.from(
+      new Set(students.map((student) => (student?.application?.which_class || 'Unknown').trim()).filter(Boolean))
+    ).sort();
+  }, [students]);
+
+  const downloadCsv = () => {
+    const rows = filteredStudents
+      .slice()
+      .sort((a, b) => {
+        const aClass = (a?.application?.which_class || '').localeCompare(b?.application?.which_class || '');
+        if (aClass !== 0) return aClass;
+        return (a.student_name || '').localeCompare(b.student_name || '');
+      })
+      .map((student) => ({
+        'Admission No': student.admission_no,
+        'Student Name': student.student_name,
+        'Aadhaar': student.aadhaar_no,
+        'Class': student?.application?.which_class || 'Unknown',
+        'PEN Number': student?.application?.pen_no || '',
+        'UDISE Code': student?.application?.udise || '',
+        'Father Name': student.father_name,
+        'Contact': student.contact_no,
+        'Email': student.email,
+        'Admitted On': student.admitted_at ? new Date(student.admitted_at).toLocaleDateString() : '',
+      }));
+
+    const header = Object.keys(rows[0] || {}).join(',');
+    const csv = [header, ...rows.map((row) => Object.values(row).map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))].join('\r\n');
+    const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `admitted-students-${classFilter || 'all'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const approveApplication = async (app: Application) => {
@@ -296,45 +345,88 @@ export function HeadmasterDashboard() {
                 No students admitted yet
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admission No</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admitted On</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {students.map((student) => (
-                      <tr key={student.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">{student.admission_no}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{student.student_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{student.father_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{student.contact_no}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(student.admitted_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => deleteStudent(student.id)}
-                            disabled={deletingId === student.id}
-                            className={`text-red-600 hover:text-red-900 transition-colors ${
-                              deletingId === student.id ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            title="Delete Student (Headmaster Only)"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </td>
+              <>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 border-b bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="classFilter" className="text-sm font-medium text-gray-700">
+                      Filter by Class
+                    </label>
+                    <select
+                      id="classFilter"
+                      value={classFilter}
+                      onChange={(e) => setClassFilter(e.target.value)}
+                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                    >
+                      <option value="">All classes</option>
+                      {availableClasses.map((className) => (
+                        <option key={className} value={className}>
+                          {className}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setClassFilter('')}
+                      className="rounded-lg bg-white border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-gray-600">
+                      Showing {filteredStudents.length} of {students.length} students
+                    </div>
+                    <button
+                      onClick={downloadCsv}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Download Excel
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admission No</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Admitted On</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredStudents.map((student) => (
+                        <tr key={student.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap font-medium">{student.admission_no}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{student.student_name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{student?.application?.which_class || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{student.father_name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{student.contact_no}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(student.admitted_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => deleteStudent(student.id)}
+                              disabled={deletingId === student.id}
+                              className={`text-red-600 hover:text-red-900 transition-colors ${
+                                deletingId === student.id ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                              title="Delete Student (Headmaster Only)"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}
